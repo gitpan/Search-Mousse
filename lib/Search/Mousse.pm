@@ -1,9 +1,11 @@
 package Search::Mousse;
 use strict;
-our $VERSION = '0.29';
+our $VERSION = '0.30';
 use base qw(Class::Accessor::Chained::Fast);
 __PACKAGE__->mk_accessors(
-  qw(directory name stemmer key_to_id id_to_key id_to_value word_to_id)
+  qw(directory name stemmer key_to_id id_to_key id_to_value word_to_id
+    id_to_related
+  )
 );
 use CDB_File;
 use CDB_File_Thawed;
@@ -50,6 +52,12 @@ sub _init {
   $filename = file($dir, "${name}_word_to_id.cdb");
   tie my %cdb4, 'CDB_File_Thawed', $filename or die "tie failed: $!\n";
   $self->word_to_id(\%cdb4);
+
+  $filename = file($dir, "${name}_id_to_related.cdb");
+  if (-f $filename) {
+    tie my %cdb7, 'CDB_File_Thawed', $filename or die "tie failed: $!\n";
+    $self->id_to_related(\%cdb7);
+  }
 }
 
 sub fetch {
@@ -58,6 +66,26 @@ sub fetch {
   my $id = $self->key_to_id->{$key};
   return unless $id;
   return $self->id_to_value->{$id};
+}
+
+sub fetch_related {
+  my ($self, $key) = @_;
+  my $id_to_value = $self->id_to_value;
+  
+  my $id = $self->key_to_id->{$key};
+  return unless $id;
+  my $ids = $self->id_to_related->{$id} || [];
+  return map { $id_to_value->{$_} } @$ids;
+}
+
+sub fetch_related_keys {
+  my ($self, $key) = @_;
+  my $id_to_key = $self->id_to_key;
+  
+  my $id = $self->key_to_id->{$key};
+  return unless $id;
+  my $ids = $self->id_to_related->{$id} || [];
+  return map { $id_to_key->{$_} } @$ids;
 }
 
 sub search {
@@ -162,6 +190,22 @@ Returns a value from the database, given a key:
 
   my $recipe = $mousse->fetch("Hearty Russian Beet Soup");
 
+=head2 fetch_related
+
+If you have used L<Search::Mousse::Writer::Related> to analyse the
+database, the fetch_related() method returns a list of values that are
+similar to the given key:
+
+  my @recipes = $mousse->fetch_related("Hearty Russian Beet Soup");
+
+=head2 fetch_related_keys
+
+If you have used L<Search::Mousse::Writer::Related> to analyse the
+database, the fetch_related_keys() method returns a list of keys that
+are similar to the given key:
+
+  my @keys = $mousse->fetch_related_keys("Hearty Russian Beet Soup");
+  
 =head2 search
 
 Returns a list of values that have all the keywords passed:
@@ -176,7 +220,7 @@ Returns a list of keys that have all the keywords passed:
 
 =head1 SEE ALSO
 
-L<Search::Mousse::Writer>
+L<Search::Mousse::Writer>, L<Search::Mousse::Writer::Related>
 
 =head1 AUTHOR
 

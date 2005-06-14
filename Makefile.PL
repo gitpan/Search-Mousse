@@ -15,6 +15,7 @@ WriteMakefile
                            'Test::More' => '0',
                            'Class::Accessor::Chained::Fast' => '0',
                            'Path::Class' => '0',
+                           'Search::ContextGraph' => '0',
                            'Cwd' => '0'
                          }
         )

@@ -2,9 +2,10 @@
 use strict;
 use File::Path;
 use MealMaster;
-use Test::More tests => 9;
+use Test::More tests => 16;
 use_ok("Search::Mousse");
 use_ok("Search::Mousse::Writer");
+use_ok("Search::Mousse::Writer::Related");
 
 my $directory = "t/tmp";
 rmtree($directory);
@@ -30,17 +31,79 @@ $mousse = Search::Mousse->new(
   name      => 'recipes',
 );
 
+my $related = Search::Mousse::Writer::Related->new(mousse => $mousse);
+$related->write;
+
+$mousse = Search::Mousse->new(
+  directory => $directory,
+  name      => 'recipes',
+);
+
 my $recipe = $mousse->fetch("Hearty Russian Beet Soup");
 ok(!$recipe);
 
 $recipe = $mousse->fetch("Hearty russian beet soup");
 is($recipe->title, "Hearty russian beet soup");
 
+my @related = $mousse->fetch_related("Hearty russian beet soup");
+is_deeply([sort map { $_->title } @related], [
+       'French onion soup coca-cola',
+          'Hearty soup mix',
+          'Italian minestrone soup coca-cola',
+          'Russian beef stroganoff coca-cola',
+          'Russian refresher mix',
+]);
+
+@related = $mousse->fetch_related_keys("Hearty russian beet soup");
+is_deeply([sort @related], [
+       'French onion soup coca-cola',
+          'Hearty soup mix',
+          'Italian minestrone soup coca-cola',
+          'Russian beef stroganoff coca-cola',
+          'Russian refresher mix',
+]);
+
 $recipe = $mousse->fetch("Chiles rellenos casserole");
 is($recipe->title, "Chiles rellenos casserole");
 
+@related = $mousse->fetch_related("Chiles rellenos casserole");
+is_deeply([sort map { $_->title } @related], [
+          'Baked apple zapata',
+          'Chinese pepper steak coca-cola',
+          'German sauerbraten coca-cola',
+          'Grecian green beans coca-cola',
+          'Greek stew',
+          'Mexican meat mix',
+          'Mexican rice mix',
+          'Russian beef stroganoff coca-cola',
+          'Vegetarian rice mix',
+]);
+
+@related = $mousse->fetch_related_keys("Chiles rellenos casserole");
+is_deeply([sort @related], [
+          'Baked apple zapata',
+          'Chinese pepper steak coca-cola',
+          'German sauerbraten coca-cola',
+          'Grecian green beans coca-cola',
+          'Greek stew',
+          'Mexican meat mix',
+          'Mexican rice mix',
+          'Russian beef stroganoff coca-cola',
+          'Vegetarian rice mix',
+]);
+
 $recipe = $mousse->fetch("Crumb topping mix");
 is($recipe->title, "Crumb topping mix");
+
+@related = $mousse->fetch_related("Crumb topping mix");
+is_deeply([sort map { $_->title } @related], [
+          'Cookie crumb crust mix'
+]);
+
+@related = $mousse->fetch_related_keys("Crumb topping mix");
+is_deeply([sort @related], [
+          'Cookie crumb crust mix'
+]);
 
 my @search = $mousse->search("crumb");
 is_deeply([sort map { $_->title } @search ], [
@@ -61,35 +124,3 @@ is_deeply([sort @search], [
   'Italian meat sauce mix',
 ]);
 
-__END__
-
-my $cg = Search::ContextGraph->new(auto_reweight => 0);
-
-while (my($id, $recipe) = each %{$mousse->id_to_value}) {
-  my $title      = $recipe->title;
-  my $id         = $mousse->key_to_id($title);
-  my $categories = join ' ', @{ $recipe->categories };
-  my @words      = split / /, lc "$title $categories";
-  eval { $cg->add($id, \@words) };
-}
-$cg->reweight_graph();
-
-my %related_recipes;
-foreach $recipe ($mousse->all_values) {
-  isa_ok($recipe, "MealMaster::Recipe");
-  my $title      = $recipe->title;
-  my $id         = $mousse->key_to_id($title);
-  my(@ids);
-  eval {
-      local $SIG{ALRM} = sub { die "alarm\n" };
-      alarm 1;
-      my ($docs, $words) = $cg->find_similar($id);
-      foreach my $k (sort { $docs->{$b} <=> $docs->{$a} } keys %$docs) {
-          next if $k eq $id;
-          push @ids, $k;
-      }
-      @ids = splice(@ids, 0, 20);
-      alarm 0;
-  };
-  $related_recipes{$id} = \@ids;
-}

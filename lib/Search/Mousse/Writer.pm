@@ -6,7 +6,7 @@ __PACKAGE__->mk_accessors(
 );
 use CDB_File;
 use CDB_File_Thawed;
-use File::Temp qw(tempfile);
+use File::Temp qw/ :POSIX /;
 use List::Uniq qw(uniq);
 use Path::Class;
 
@@ -37,15 +37,15 @@ sub _init {
   my $name = $self->name;
 
   my $filename = file($self->directory, "${name}_key_to_id.cdb");
-  my $tempfile = tempfile();
+  my $tempfile = tmpnam();
   $self->key_to_id(CDB_File->new($filename, $tempfile)) or die $!;
 
   $filename = file($self->directory, "${name}_id_to_key.cdb");
-  $tempfile = tempfile();
+  $tempfile = tmpnam();
   $self->id_to_key(CDB_File->new($filename, $tempfile)) or die $!;
 
   $filename = file($self->directory, "${name}_id_to_value.cdb");
-  $tempfile = tempfile();
+  $tempfile = tmpnam();
   $self->id_to_value(CDB_File_Thawed->new($filename, $tempfile)) or die $!;
 
   $self->word_to_id({});
@@ -65,7 +65,6 @@ sub add {
   $self->id_to_value->insert($id, $value);
 
   my @words = $self->stemmer->($words);
-
   foreach my $word (@words) {
     push @{ $self->word_to_id->{$word} }, $id;
   }
@@ -80,7 +79,7 @@ sub write {
   $self->id_to_value->finish;
 
   my $filename = file($self->directory, "${name}_word_to_id.cdb");
-  my $tempfile = tempfile();
+  my $tempfile = tmpnam();
   my $cdb      = CDB_File_Thawed->new($filename, $tempfile) or die $!;
 
   while (my ($key, $value) = each %{ $self->word_to_id }) {
