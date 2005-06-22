@@ -13,8 +13,10 @@ WriteMakefile
                            'Text::Soundex' => '0',
                            'CDB_File' => '0',
                            'Test::More' => '0',
+                           'Set::Scalar' => '0',
                            'Class::Accessor::Chained::Fast' => '0',
                            'Path::Class' => '0',
+                           'Search::QueryParser' => '0',
                            'Search::ContextGraph' => '0',
                            'Cwd' => '0'
                          }

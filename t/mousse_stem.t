@@ -3,7 +3,7 @@ use strict;
 use File::Path;
 use List::Uniq qw(uniq);
 use MealMaster;
-use Test::More tests => 16;
+use Test::More tests => 18;
 use Text::Soundex;
 use_ok("Search::Mousse");
 use_ok("Search::Mousse::Writer");
@@ -43,6 +43,7 @@ $mousse = Search::Mousse->new(
   directory => $directory,
   name      => 'recipes',
   stemmer   => \&stemmer,
+  and       => 1,
 );
 
 my $recipe = $mousse->fetch("Hearty Russian Beet Soup");
@@ -123,6 +124,16 @@ my @search = $mousse->search("crumb");
 is_deeply([sort map { $_->title } @search ], [
   'Cookie crumb crust mix',
   'Crumb topping mix',
+]);
+
+@search = $mousse->search("crumb +topping");
+is_deeply([sort map { $_->title } @search ], [
+  'Crumb topping mix',
+]);
+
+@search = $mousse->search("crumb -topping");
+is_deeply([sort map { $_->title } @search ], [
+  'Cookie crumb crust mix',
 ]);
 
 @search = $mousse->search_keys("italian");

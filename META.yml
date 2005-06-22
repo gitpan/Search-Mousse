@@ -1,6 +1,6 @@
 ---
 name: Search-Mousse
-version: 0.30
+version: 0.31
 author:
   - 'Leon Brocard, C<< <acme@astray.com> >>'
 abstract: A simple and fast inverted index
@@ -12,6 +12,8 @@ requires:
   MealMaster: 0
   Path::Class: 0
   Search::ContextGraph: 0
+  Search::QueryParser: 0
+  Set::Scalar: 0
   Storable: 0
   Test::Exception: 0
   Test::More: 0
@@ -23,7 +25,7 @@ provides:
     file: lib/CDB_File_Thawed.pm
   Search::Mousse:
     file: lib/Search/Mousse.pm
-    version: 0.30
+    version: 0.31
   Search::Mousse::Writer:
     file: lib/Search/Mousse/Writer.pm
   Search::Mousse::Writer::Related:

@@ -1,16 +1,18 @@
 package Search::Mousse;
 use strict;
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 use base qw(Class::Accessor::Chained::Fast);
 __PACKAGE__->mk_accessors(
   qw(directory name stemmer key_to_id id_to_key id_to_value word_to_id
-    id_to_related
+    id_to_related and
   )
 );
 use CDB_File;
 use CDB_File_Thawed;
 use List::Uniq qw(uniq);
 use Path::Class;
+use Search::QueryParser;
+use Set::Scalar;
 
 sub new {
   my $class = shift;
@@ -27,6 +29,7 @@ sub new {
       return uniq(split / /, $words);
     }
   );
+  $self->and($args{and} || 0);
 
 	$self->_init;
   return $self;
@@ -108,21 +111,71 @@ sub search_keys {
 sub _search_ids {
   my ($self, $words) = @_;
 
-  my @words = $self->stemmer->($words);
+  my $qp = Search::QueryParser->new;
+  my $query = $qp->parse($words);
+  return unless $query;
 
-  #  use YAML; die Dump ($data->{word_to_id});
-
-  my $word = pop @words;
-  return unless exists $self->word_to_id->{$word};
-  my @ids = @{ $self->word_to_id->{$word} };
-  foreach $word (@words) {
-    return unless exists $self->word_to_id->{$word};
-    my @newids = @{ $self->word_to_id->{$word} };
-    my %in = map { ($_, 1) } @newids;
-    @ids = grep { $in{$_} } @ids;
+  my @union;
+  foreach my $term (@{$query->{""}}) {
+    my $value = $term->{value};
+    my @values = $self->stemmer->($value);
+    push @union, $values[0];
   }
-  @ids = uniq(@ids);
-  return @ids;
+  
+  my @plus;
+  foreach my $term (@{$query->{"+"}}) {
+    my $value = $term->{value};
+    my @values = $self->stemmer->($value);
+    push @plus, $values[0];
+  }
+  
+  my @minus;
+  foreach my $term (@{$query->{"-"}}) {
+    my $value = $term->{value};
+    my @values = $self->stemmer->($value);
+    push @minus, $values[0];
+  }
+  
+  if ($self->and) {
+    push @plus, @union;
+    @union = ();
+  }
+  
+  my $s = Set::Scalar->new;
+
+	if (@union) {
+    foreach my $word (@union) {
+      next unless exists $self->word_to_id->{$word};
+      my @ids = @{ $self->word_to_id->{$word} };
+      $s->insert(@ids);
+    }
+  
+    foreach my $word (@plus) {
+      return unless exists $self->word_to_id->{$word};
+      my @ids = @{ $self->word_to_id->{$word} };
+      my $s2 = Set::Scalar->new(@ids);
+      $s = $s->intersection($s2);
+    }
+  } else {
+    my $word = pop @plus;
+    my @ids = @{ $self->word_to_id->{$word} };
+    $s->insert(@ids);
+
+    foreach my $word (@plus) {
+      return unless exists $self->word_to_id->{$word};
+      my @ids = @{ $self->word_to_id->{$word} };
+      my $s2 = Set::Scalar->new(@ids);
+      $s = $s->intersection($s2);
+    }   
+  }
+
+  foreach my $word (@minus) {
+    next unless exists $self->word_to_id->{$word};
+    my @ids = @{ $self->word_to_id->{$word} };
+    $s = $s->delete(@ids);
+  }
+  
+  return $s->members;
 }
 
 1;
@@ -184,6 +237,13 @@ and a name for the database. If you have a custom stemmer, also pass it in:
 
 =head1 METHODS
 
+=head2 and
+
+If this is set to true, query terms are ANDed by default. Thus "white
+bread" would be parsed the same as "+white +bread":
+
+  $mousse->and(1);
+
 =head2 fetch
 
 Returns a value from the database, given a key:
@@ -208,9 +268,11 @@ are similar to the given key:
   
 =head2 search
 
-Returns a list of values that have all the keywords passed:
+Returns a list of values that match the search terms (but see and()):
 
-  my @recipes = $mousse->search("white bread");
+  my @white_or_bread = $mousse->search("white bread");
+  my @white_bread    = $mousse->search("+white +bread");
+  my @nonwhite_bread = $mousse->search("-white +bread");
 
 =head2 search_keys
 

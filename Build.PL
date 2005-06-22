@@ -11,12 +11,13 @@ my $build = Module::Build->new(
     'Cwd'                            => '0',
     'MealMaster'                     => '0',
     'Path::Class'                    => '0',
+    'Set::Scalar'                    => '0',
+    'Search::QueryParser'            => '0',
     'Search::ContextGraph'           => '0',
     'Storable'                       => '0',
     'Test::Exception'                => '0',
     'Test::More'                     => '0',
     'Text::Soundex'                  => '0',
-
   },
 );
 $build->create_build_script;

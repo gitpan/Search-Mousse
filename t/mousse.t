@@ -2,7 +2,7 @@
 use strict;
 use File::Path;
 use MealMaster;
-use Test::More tests => 16;
+use Test::More tests => 18;
 use_ok("Search::Mousse");
 use_ok("Search::Mousse::Writer");
 use_ok("Search::Mousse::Writer::Related");
@@ -37,6 +37,7 @@ $related->write;
 $mousse = Search::Mousse->new(
   directory => $directory,
   name      => 'recipes',
+  and       => 1,
 );
 
 my $recipe = $mousse->fetch("Hearty Russian Beet Soup");
@@ -109,6 +110,16 @@ my @search = $mousse->search("crumb");
 is_deeply([sort map { $_->title } @search ], [
   'Cookie crumb crust mix',
   'Crumb topping mix',
+]);
+
+@search = $mousse->search("crumb +topping");
+is_deeply([sort map { $_->title } @search ], [
+  'Crumb topping mix',
+]);
+
+@search = $mousse->search("crumb -topping");
+is_deeply([sort map { $_->title } @search ], [
+  'Cookie crumb crust mix',
 ]);
 
 @search = $mousse->search_keys("italian");
