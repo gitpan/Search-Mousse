@@ -9,6 +9,7 @@ my $build = Module::Build->new(
     'CDB_File'                       => '0',
     'Class::Accessor::Chained::Fast' => '0',
     'Cwd'                            => '0',
+    'List::Uniq'                     => '0',
     'MealMaster'                     => '0',
     'Path::Class'                    => '0',
     'Set::Scalar'                    => '0',

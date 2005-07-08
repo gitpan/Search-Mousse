@@ -1,6 +1,6 @@
 package Search::Mousse;
 use strict;
-our $VERSION = '0.31';
+our $VERSION = '0.32';
 use base qw(Class::Accessor::Chained::Fast);
 __PACKAGE__->mk_accessors(
   qw(directory name stemmer key_to_id id_to_key id_to_value word_to_id
